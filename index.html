@@ -88,6 +88,45 @@
 @media(max-width:680px){  }
 @media print{  }
 
+
+    /* Estilos usados por html2pdf para descargar PDF real sin depender de la ventana de impresión */
+    .pdf-export{
+      display:block !important;
+      background:#fff !important;
+      color:#000 !important;
+      width:816px;
+      max-width:816px;
+      min-height:1056px;
+      box-sizing:border-box;
+      font-family:Arial, Helvetica, sans-serif;
+    }
+    .pdf-export .wrap{
+      max-width:none !important;
+      width:100% !important;
+      margin:0 !important;
+      background:#fff !important;
+      color:#000 !important;
+      box-sizing:border-box;
+    }
+    .pdf-export .block{break-inside:auto}
+    .pdf-export .avoid-break{break-inside:avoid; page-break-inside:avoid}
+    .pdf-export h2{font-size:18px;margin:8px 0}
+    .pdf-export p, .pdf-export td, .pdf-export th{font-size:12px;color:#000}
+    .pdf-export .grid-2{grid-template-columns:1fr 1fr}
+    .pdf-export .grid-3{grid-template-columns:repeat(3,1fr)}
+    .pdf-export .box{border:1px solid #999;border-radius:8px;padding:8px;margin:8px 0;background:#fff;color:#000}
+    .pdf-export .tbl{border-collapse:separate;border-spacing:0 8px;table-layout:fixed}
+    .pdf-export .tbl td{border:1px solid #999;background:#fff;color:#000}
+    .pdf-export .tbl th{color:#333}
+    .pdf-export .photo-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+    .pdf-export .photo-grid img{width:calc(33.333% - 4px);height:180px;object-fit:cover;border:1px solid #999;border-radius:6px;display:block}
+    .pdf-export .wm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .pdf-export .wm img{opacity:.06;transform:rotate(-25deg);max-width:85%;max-height:85%}
+    .pdf-export input,.pdf-export textarea,.pdf-export select{background:#fff!important;color:#000!important;border:1px solid #999!important}
+    .pdf-export .wm img{opacity:0.06 !important}
+    .pdf-export .legend{font-size:10px;color:#444}
+    .pdf-export .photo-grid img{height:190px}
+
     @media print{
       body{background:#fff;color:#000}
       .card,header,.footer,.btn,.add-row,.del-row,#preview{display:none !important}
@@ -587,6 +626,7 @@
       <button class="btn" onclick="previewReport()">Vista previa</button>
       <div class="row" style="gap:6px;flex-wrap:nowrap">
         <button class="btn warn" onclick="generatePDF()">Descargar PDF</button>
+        <button class="btn" onclick="printReport()">Imprimir</button>
         <button class="btn" onclick="compartir()">Compartir</button>
       </div>
     </div>
@@ -744,12 +784,15 @@
   <div id="preview" class="preview-backdrop">
     <div class="preview-card">
       <div class="preview-actions">
-        <button class="btn" onclick="generatePDF()">Imprimir / Guardar PDF</button>
+        <button class="btn warn" onclick="generatePDF()">Descargar PDF</button>
+        <button class="btn" onclick="printReport()">Imprimir</button>
         <button class="btn danger" onclick="closePreview()">Cerrar</button>
       </div>
       <div id="previewBody"></div>
     </div>
   </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-YcsIPGdhPK4P/uRW46XbVFQGvG1Yb3IzPLTklGv3oV/VtFNV9frvXi0QpRd1oEv2CeI9+98gTghMEzpnFhP7VA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 <script>
   // ====== Embebidos (opcional) ======
@@ -1221,26 +1264,124 @@ if($('pAban2PsiMax')) $('pAban2PsiMax').textContent = d.aban2PsiMax||'-';
     return `${cli}-${fecha}`;
   }
 
-  // ====== Exportación ======
-  async function elementToPNGFile(el, filename){
-    const clone=el.cloneNode(true); clone.style.display='block';
-    const w=el.scrollWidth||900, h=el.scrollHeight||1200;
-    const svg=`<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"${w}\" height=\"${h}\"><foreignObject width=\"100%\" height=\"100%\">${new XMLSerializer().serializeToString(clone)}</foreignObject></svg>`;
-    const url='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
-    const img=new Image(); img.crossOrigin='anonymous'; await new Promise(r=>{img.onload=r; img.src=url});
-    const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h; const ctx=canvas.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0);
-    const blob=await new Promise(res=>canvas.toBlob(res,'image/png'));
-    return new File([blob], filename, {type:'image/png'});
+  // ====== Exportación compatible: PDF directo, impresión y compartir PDF ======
+  function wait(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
+
+  async function waitForImages(root){
+    const imgs = [...root.querySelectorAll('img')];
+    await Promise.all(imgs.map(img => {
+      if(img.complete && img.naturalWidth !== 0) return Promise.resolve();
+      if(img.decode) return img.decode().catch(() => {});
+      return new Promise(resolve => { img.onload = img.onerror = resolve; });
+    }));
+  }
+
+  async function buildPdfClone(){
+    calcTonsDia();
+    await fillPrint();
+
+    const source = document.getElementById('printArea');
+    if(!source) throw new Error('No se encontró el área del reporte para exportar.');
+
+    const old = document.getElementById('pdfExportArea');
+    if(old) old.remove();
+
+    const clone = source.cloneNode(true);
+    clone.id = 'pdfExportArea';
+    clone.classList.add('pdf-export');
+    clone.style.display = 'block';
+    clone.style.position = 'absolute';
+    clone.style.left = '0';
+    clone.style.top = '0';
+    clone.style.width = '816px';
+    clone.style.maxWidth = '816px';
+    clone.style.background = '#fff';
+    clone.style.color = '#000';
+    clone.style.opacity = '0';
+    clone.style.pointerEvents = 'none';
+    clone.style.zIndex = '-1';
+
+    document.body.appendChild(clone);
+    await waitForImages(clone);
+    await wait(150);
+    return clone;
+  }
+
+  function getPdfOptions(){
+    return {
+      margin: [0.25, 0.25, 0.25, 0.25],
+      filename: buildBaseName() + '.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: Math.min(2, window.devicePixelRatio || 2),
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 816
+      },
+      jsPDF: {
+        unit: 'in',
+        format: 'letter',
+        orientation: 'portrait',
+        compress: true
+      },
+      pagebreak: {
+        mode: ['css', 'legacy'],
+        avoid: ['.avoid-break', '.box', 'img']
+      }
+    };
+  }
+
+  async function generatePDFBlob(){
+    if(typeof html2pdf === 'undefined'){
+      throw new Error('No se cargó la librería html2pdf. Revisa que el navegador tenga internet o usa Imprimir.');
+    }
+
+    const clone = await buildPdfClone();
+    try{
+      const worker = html2pdf().set(getPdfOptions()).from(clone);
+      const blob = await worker.outputPdf('blob');
+      return blob;
+    }finally{
+      clone.remove();
+    }
   }
 
   async function generatePDF(){
     try{
+      const pv = document.getElementById('preview');
+      if(pv && pv.classList.contains('show')) closePreview();
+
+      const blob = await generatePDFBlob();
+      const filename = buildBaseName() + '.pdf';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }catch(e){
+      console.error(e);
+      alert('No se pudo descargar el PDF directo. Se abrirá Imprimir / Guardar PDF como respaldo.');
+      printReport();
+    }
+  }
+
+  async function printReport(){
+    try{
       calcTonsDia();
       await fillPrint();
-      { const pv=document.getElementById('preview'); if(pv && pv.classList.contains('show')) closePreview(); }
-      setTimeout(()=>{ window.print(); }, 50);
+      const pv = document.getElementById('preview');
+      if(pv && pv.classList.contains('show')) closePreview();
+      setTimeout(()=> window.print(), 80);
     }catch(e){
-      console.error(e); alert('No se pudo preparar el PDF: '+e.message);
+      console.error(e);
+      alert('No se pudo preparar la impresión: ' + e.message);
     }
   }
 
@@ -1255,7 +1396,7 @@ if($('pAban2PsiMax')) $('pAban2PsiMax').textContent = d.aban2PsiMax||'-';
       const subject=`Reporte de Servicio - ${d.cliente||''} (${d.tipo||''})`;
       const body=`Estimado/a ${d.contacto||''},
 
-Adjunto el parte de servicio correspondiente.
+Adjunto el reporte de servicio correspondiente.
 Cliente: ${d.cliente||''}
 Equipo (modelo): ${d.equipo||''}
 Tipo de servicio: ${d.tipo||''}
@@ -1269,14 +1410,19 @@ Saludos,
 ${(d.tecnicos&&d.tecnicos.length)? d.tecnicos[0].nombre : 'Técnico'}`;
 
       try{
-        const file = await elementToPNGFile(document.getElementById('printArea'), (buildBaseName()+'.png'));
-        if(navigator.canShare && navigator.canShare({files:[file]})){
-          await navigator.share({title: subject, text: body, files:[file]});
+        const pdfBlob = await generatePDFBlob();
+        const pdfFile = new File([pdfBlob], buildBaseName()+'.pdf', {type:'application/pdf'});
+
+        if(navigator.canShare && navigator.canShare({files:[pdfFile]})){
+          await navigator.share({title: subject, text: body, files:[pdfFile]});
           return;
         }
-      }catch(e){ console.warn('Share API no disponible o falló:', e); }
+      }catch(e){
+        console.warn('No se pudo compartir PDF como archivo:', e);
+      }
 
-      const mailto = `mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(cc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      // Respaldo universal: abre correo con texto. Los adjuntos no se pueden agregar por mailto por seguridad del navegador.
+      const mailto = `mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(cc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body + '\n\nNota: adjunta manualmente el PDF descargado desde el botón “Descargar PDF”.')}`;
       window.location.href = mailto;
     }catch(e){
       console.error(e); alert('No se pudo abrir la opción de compartir: '+e.message);
