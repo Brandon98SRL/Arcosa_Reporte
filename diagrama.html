@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Diagrama de Servicio | ARCOSA</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card:#121a2b;
+      --ink:#e9eefc;
+      --muted:#93a1c8;
+      --brand:#4da3ff;
+      --warn:#f1c40f;
+      --danger:#e74c3c;
+      --line:#263355;
+    }
+
+    *{box-sizing:border-box}
+    html,body{
+      margin:0;
+      padding:0;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
+    }
+
+    .wrap{
+      max-width:1280px;
+      margin:0 auto;
+      padding:16px;
+    }
+
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin:8px 0 16px;
+    }
+
+    h1{font-size:20px;margin:0;letter-spacing:.4px}
+    .sub{color:var(--muted);font-size:13px;margin-top:3px}
+
+    .actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .btn{
+      appearance:none;
+      border:1px solid #324268;
+      background:#0e182b;
+      color:var(--ink);
+      padding:10px 14px;
+      border-radius:12px;
+      font-weight:700;
+      cursor:pointer;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      min-height:40px;
+    }
+
+    .btn:hover{filter:brightness(1.12)}
+    .btn.primary{background:var(--brand);color:#001b36;border-color:rgba(255,255,255,.15)}
+    .btn.warn{background:var(--warn);color:#221a00}
+    .btn.danger{background:var(--danger);color:white}
+    .btn.ghost{background:transparent}
+
+    .card{
+      background:var(--card);
+      border:1px solid #1f2a44;
+      border-radius:16px;
+      padding:14px;
+      box-shadow:0 8px 24px rgba(0,0,0,.28);
+    }
+
+    .hint{
+      color:var(--muted);
+      font-size:12px;
+      margin:0 0 12px;
+      line-height:1.4;
+    }
+
+    .diagram-scroll{
+      width:100%;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+      border-radius:14px;
+      border:1px solid #24345f;
+      background:#fff;
+    }
+
+    .diagram{
+      position:relative;
+      width:1535px;
+      height:1024px;
+      background:#fff;
+      transform-origin:top left;
+    }
+
+    .diagram img.bg{
+      position:absolute;
+      inset:0;
+      width:1535px;
+      height:1024px;
+      display:block;
+      user-select:none;
+      pointer-events:none;
+    }
+
+    .field{
+      position:absolute;
+      z-index:5;
+      height:32px;
+      border:1px solid #9aa3b5;
+      background:rgba(255,255,255,.82);
+      color:#000;
+      border-radius:2px;
+      padding:3px 7px;
+      font-size:16px;
+      font-weight:600;
+      outline:0;
+      box-shadow:inset 0 1px 2px rgba(0,0,0,.12);
+    }
+
+    .field:focus{
+      border-color:#2563eb;
+      background:#fff;
+      box-shadow:0 0 0 3px rgba(37,99,235,.25);
+    }
+
+    .select{
+      padding:2px 4px;
+      font-size:14px;
+      appearance:auto;
+    }
+
+    .tiny{height:28px;font-size:14px;padding:2px 5px}
+    .small{height:30px;font-size:15px}
+    .top{height:34px}
+
+    .check{
+      position:absolute;
+      z-index:6;
+      width:15px;
+      height:15px;
+      accent-color:#0ea5e9;
+      cursor:pointer;
+    }
+
+    .hit-label{
+      position:absolute;
+      z-index:7;
+      height:21px;
+      cursor:pointer;
+      background:transparent;
+    }
+
+    .floating-note{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    @media(max-width:760px){
+      .wrap{padding:10px}
+      header{align-items:flex-start;flex-direction:column}
+      .actions{justify-content:flex-start}
+      h1{font-size:17px}
+      .btn{font-size:13px;padding:9px 11px}
+      .card{padding:10px}
+      .diagram-scroll{max-height:72vh}
+    }
+
+    @media print{
+      body{background:#fff;color:#000}
+      header,.hint,.floating-note,.no-print{display:none!important}
+      .wrap{max-width:none;margin:0;padding:0}
+      .card{border:0;box-shadow:none;padding:0;background:#fff}
+      .diagram-scroll{overflow:visible;border:0;border-radius:0}
+      .diagram{
+        transform:scale(.68);
+        transform-origin:top left;
+        page-break-inside:avoid;
+      }
+      @page{size:letter landscape;margin:0.25in}
+    }
+
+    .pdf-export{
+      background:#fff!important;
+      color:#000!important;
+      width:1535px!important;
+      height:1024px!important;
+      overflow:hidden!important;
+      border:0!important;
+    }
+
+    .pdf-export .diagram{
+      width:1535px!important;
+      height:1024px!important;
+      transform:none!important;
+    }
+
+    .pdf-export .field{
+      background:#fff!important;
+      color:#000!important;
+      border:1px solid #777!important;
+    }
+
+    .pdf-export .check{
+      accent-color:#0ea5e9!important;
+      opacity:1!important;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="no-print">
+      <div>
+        <h1>ARCOSA Refrigeración</h1>
+        <div class="sub">Diagrama de servicio editable</div>
+      </div>
+      <div class="actions">
+        <a class="btn ghost" href="index.html">← Volver al reporte</a>
+        <button class="btn primary" onclick="guardarLocal()">Guardar datos</button>
+        <button class="btn ghost" onclick="cargarLocal()">Cargar datos</button>
+        <button class="btn danger" onclick="limpiarTodo()">Limpiar</button>
+        <button class="btn" onclick="imprimir()">Descargar e Imprimir</button>
+        <button class="btn" onclick="compartir()">Compartir</button>
+      </div>
+    </header>
+
+    <div class="card">
+
+      <div class="diagram-scroll" id="captureWrap">
+        <div class="diagram" id="diagramArea">
+          <img class="bg" src="maquinas.jpeg" alt="Diagrama de refrigeración ARCOSA" />
+
+          <!-- Encabezado superior -->
+          <input class="field top" id="ubicacion" style="left:119px;top:13px;width:224px" />
+          <input class="field top" id="ciudad" style="left:437px;top:13px;width:240px" />
+          <input class="field top" id="estado" style="left:793px;top:13px;width:319px" />
+          <input class="field top" id="fechaHora" style="left:1274px;top:13px;width:201px" />
+
+          <input class="field top" id="descripcionSistema" style="left:554px;top:54px;width:514px" />
+          <input class="field top" id="fechaArranque" style="left:1274px;top:54px;width:201px" />
+
+          <input class="field top" id="cliente" style="left:90px;top:91px;width:408px" />
+          <input class="field top" id="tecnico" style="left:613px;top:91px;width:195px" />
+          <input class="field top" id="email" style="left:913px;top:91px;width:214px" />
+          <input class="field top" id="refrigerante" style="left:1274px;top:91px;width:201px" />
+
+          <input class="field top" id="tipoAceite" style="left:154px;top:128px;width:256px" />
+          <input class="field top" id="celular" style="left:613px;top:128px;width:195px" />
+          <input class="field top" id="modeloCompresor" style="left:1030px;top:128px;width:162px" />
+          <input class="field top" id="numeroSerie" style="left:1358px;top:128px;width:115px" />
+
+          <!-- Lado izquierdo / succión -->
+          <input class="field small" id="tempSuccion" style="left:103px;top:235px;width:63px" />
+          <select class="field select small" id="tempSuccionUnidad" style="left:166px;top:235px;width:38px">
+            <option>°C</option><option>°F</option>
+          </select>
+
+          <input class="field small" id="presionSuccion" style="left:103px;top:293px;width:63px" />
+          <select class="field select small" id="presionSuccionUnidad" style="left:166px;top:293px;width:38px">
+            <option>psi</option><option>bar</option><option>kg/cm²</option>
+          </select>
+
+          <input class="field small" id="tempEntradaAgua" style="left:195px;top:616px;width:50px" />
+          <select class="field select small" id="tempEntradaAguaUnidad" style="left:245px;top:616px;width:34px">
+            <option>°C</option><option>°F</option>
+          </select>
+
+          <input class="field small" id="tempSuccComp" style="left:358px;top:740px;width:66px" />
+          <select class="field select small" id="tempSuccCompUnidad" style="left:424px;top:740px;width:32px">
+            <option>°C</option><option>°F</option>
+          </select>
+
+          <input class="field small" id="presionSuccComp" style="left:358px;top:796px;width:66px" />
+          <select class="field select small" id="presionSuccCompUnidad" style="left:424px;top:796px;width:32px">
+            <option>psi</option><option>bar</option>
+          </select>
+
+          <!-- Centro superior / líquido -->
+          <input class="field small" id="tempLiquido" style="left:716px;top:242px;width:57px" />
+          <select class="field select small" id="tempLiquidoUnidad" style="left:773px;top:242px;width:34px">
+            <option>°C</option><option>°F</option>
+          </select>
+
+          <input class="field small" id="presionLiquido" style="left:719px;top:299px;width:89px" />
+          <select class="field select small" id="presionLiquidoUnidad" style="left:719px;top:336px;width:89px">
+            <option>psi</option><option>bar</option><option>kg/cm²</option>
+          </select>
+
+          <input class="field tiny" id="aperturaValvula" style="left:742px;top:522px;width:54px" />
+
+          <input class="field tiny" id="voltL1L2" style="left:577px;top:586px;width:50px" />
+          <input class="field tiny" id="voltL1L3" style="left:577px;top:614px;width:50px" />
+          <input class="field tiny" id="voltL2L3" style="left:577px;top:641px;width:50px" />
+
+          <input class="field tiny" id="ampL1" style="left:743px;top:586px;width:52px" />
+          <input class="field tiny" id="ampL2" style="left:743px;top:614px;width:52px" />
+          <input class="field tiny" id="ampL3" style="left:743px;top:641px;width:52px" />
+
+          <!-- Condensador -->
+          <input class="field small" id="tempEntradaRefrigerante" style="left:841px;top:377px;width:65px" />
+          <select class="field select small" id="tempEntradaRefrigeranteUnidad" style="left:906px;top:377px;width:36px">
+            <option>°C</option><option>°F</option>
+          </select>
+
+          <input class="field small" id="tempSalidaRefrigerante" style="left:1150px;top:377px;width:64px" />
+          <select class="field select small" id="tempSalidaRefrigeranteUnidad" style="left:1214px;top:377px;width:37px">
+            <option>°C</option><option>°F</option>
+          </select>
+
+          <input class="field small" id="presionSalidaCondensador" style="left:1255px;top:625px;width:70px" />
+          <select class="field select small" id="presionSalidaCondensadorUnidad" style="left:1325px;top:625px;width:37px">
+            <option>psi</option><option>bar</option>
+          </select>
+
+          <!-- Descarga -->
+          <input class="field small" id="tempDescargaRefrigerante" style="left:930px;top:686px;width:75px" />
+          <select class="field select small" id="tempDescargaRefrigeranteUnidad" style="left:1005px;top:686px;width:36px">
+            <option>°C</option><option>°F</option>
+          </select>
+
+          <input class="field small" id="tempDescargaComp" style="left:946px;top:740px;width:62px" />
+          <select class="field select small" id="tempDescargaCompUnidad" style="left:1008px;top:740px;width:35px">
+            <option>°C</option><option>°F</option>
+          </select>
+
+          <input class="field small" id="presionDescargaComp" style="left:946px;top:797px;width:62px" />
+          <select class="field select small" id="presionDescargaCompUnidad" style="left:1008px;top:797px;width:35px">
+            <option>psi</option><option>bar</option>
+          </select>
+
+          <!-- Porcentajes -->
+          <input class="field tiny" id="porcentajeEncendida" style="left:1415px;top:175px;width:56px" />
+          <input class="field tiny" id="porcentajeApagada" style="left:1415px;top:211px;width:56px" />
+
+          <!-- Ciclos -->
+          <input class="field small" id="cicloCongelacion" style="left:477px;top:894px;width:74px" />
+          <input class="field small" id="cicloDeshielo" style="left:477px;top:937px;width:74px" />
+
+          <!-- Nivel mirilla aceite -->
+          <input class="check" type="radio" name="nivelMirillaAceite" id="aceiteArriba" value="Arriba" style="left:873px;top:900px" />
+          <label class="hit-label" for="aceiteArriba" style="left:895px;top:897px;width:82px"></label>
+
+          <input class="check" type="radio" name="nivelMirillaAceite" id="aceiteTresCuartos" value="3/4" style="left:873px;top:921px" />
+          <label class="hit-label" for="aceiteTresCuartos" style="left:895px;top:918px;width:72px"></label>
+
+          <input class="check" type="radio" name="nivelMirillaAceite" id="aceiteMedio" value="1/2" style="left:873px;top:944px" />
+          <label class="hit-label" for="aceiteMedio" style="left:895px;top:940px;width:72px"></label>
+
+          <input class="check" type="radio" name="nivelMirillaAceite" id="aceiteCuarto" value="1/4" style="left:873px;top:966px" />
+          <label class="hit-label" for="aceiteCuarto" style="left:895px;top:962px;width:72px"></label>
+
+          <input class="check" type="radio" name="nivelMirillaAceite" id="aceiteAbajo" value="Abajo" style="left:873px;top:987px" />
+          <label class="hit-label" for="aceiteAbajo" style="left:895px;top:984px;width:82px"></label>
+
+          <!-- Aceite bomba -->
+          <input class="field small" id="presionBombaAceite" style="left:1264px;top:906px;width:52px" />
+          <select class="field select small" id="presionBombaAceiteUnidad" style="left:1316px;top:906px;width:35px">
+            <option>psi</option><option>bar</option>
+          </select>
+
+          <input class="field small" id="diferencialPromedioAceite" style="left:1264px;top:950px;width:52px" />
+          <select class="field select small" id="diferencialPromedioAceiteUnidad" style="left:1316px;top:950px;width:35px">
+            <option>psi</option><option>bar</option>
+          </select>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const STORAGE_KEY = 'arcosa_diagrama_servicio_v1';
+
+    function getFields(){
+      return [...document.querySelectorAll('input.field, select.field')];
+    }
+
+    function getChecks(){
+      return [...document.querySelectorAll('input[type="radio"], input[type="checkbox"]')];
+    }
+
+    function collectData(){
+      const data = {};
+      getFields().forEach(el => data[el.id] = el.value);
+      getChecks().forEach(el => {
+        if(el.type === 'radio'){
+          if(el.checked) data[el.name] = el.value;
+        }else{
+          data[el.id] = el.checked;
+        }
+      });
+      return data;
+    }
+
+    function applyData(data){
+      if(!data) return;
+      getFields().forEach(el => {
+        if(Object.prototype.hasOwnProperty.call(data, el.id)) el.value = data[el.id];
+      });
+      getChecks().forEach(el => {
+        if(el.type === 'radio'){
+          el.checked = data[el.name] === el.value;
+        }else if(Object.prototype.hasOwnProperty.call(data, el.id)){
+          el.checked = !!data[el.id];
+        }
+      });
+    }
+
+    function guardarLocal(showAlert=true){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(collectData()));
+      if(showAlert) alert('Datos del diagrama guardados en este navegador.');
+    }
+
+    function cargarLocal(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw){
+        alert('No hay datos guardados todavía.');
+        return;
+      }
+      try{
+        applyData(JSON.parse(raw));
+      }catch(e){
+        alert('No se pudieron cargar los datos guardados.');
+      }
+    }
+
+    function limpiarTodo(){
+      if(!confirm('¿Limpiar todos los campos del diagrama?')) return;
+      getFields().forEach(el => el.value = '');
+      getChecks().forEach(el => el.checked = false);
+    }
+
+    function wait(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
+
+    function loadScriptOnce(src){
+      return new Promise((resolve, reject)=>{
+        const existing = [...document.scripts].find(s => s.src === src || s.getAttribute('src') === src);
+        if(existing){
+          if(existing.dataset.loaded === 'true') return resolve();
+          existing.addEventListener('load', resolve, {once:true});
+          existing.addEventListener('error', reject, {once:true});
+          return;
+        }
+        const script=document.createElement('script');
+        script.src=src;
+        script.async=true;
+        script.crossOrigin='anonymous';
+        script.referrerPolicy='no-referrer';
+        script.onload=()=>{ script.dataset.loaded='true'; resolve(); };
+        script.onerror=()=>reject(new Error('No se pudo cargar: '+src));
+        document.head.appendChild(script);
+      });
+    }
+
+    let html2pdfLoadingPromise=null;
+    async function ensureHtml2PdfLoaded(){
+      if(typeof window.html2pdf === 'function') return true;
+      if(html2pdfLoadingPromise) return html2pdfLoadingPromise;
+
+      const sources=[
+        'libs/html2pdf.bundle.min.js',
+        'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js',
+        'https://unpkg.com/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
+      ];
+
+      html2pdfLoadingPromise=(async()=>{
+        let lastError=null;
+        for(const src of sources){
+          try{
+            await loadScriptOnce(src);
+            await wait(80);
+            if(typeof window.html2pdf === 'function') return true;
+          }catch(e){
+            lastError=e;
+            console.warn(e.message);
+          }
+        }
+        throw lastError || new Error('No se pudo cargar html2pdf.');
+      })();
+
+      return html2pdfLoadingPromise;
+    }
+
+    async function waitForImages(root){
+      const imgs=[...root.querySelectorAll('img')];
+      await Promise.all(imgs.map(img=>{
+        if(img.complete && img.naturalWidth !== 0) return Promise.resolve();
+        if(img.decode) return img.decode().catch(()=>{});
+        return new Promise(resolve=>{ img.onload=img.onerror=resolve; });
+      }));
+    }
+
+    function buildFilename(){
+      const cliente = ($('cliente')?.value || 'diagrama').toString()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^a-zA-Z0-9]+/g,'-')
+        .replace(/^-+|-+$/g,'')
+        .toLowerCase() || 'diagrama';
+
+      const today = new Date().toISOString().slice(0,10);
+      return `${cliente}-diagrama-${today}.pdf`;
+    }
+
+    function syncCloneValues(clone){
+      getFields().forEach(original=>{
+        const copy = clone.querySelector('#' + CSS.escape(original.id));
+        if(!copy) return;
+        copy.value = original.value;
+        if(original.tagName === 'SELECT'){
+          [...copy.options].forEach(opt => opt.selected = opt.value === original.value || opt.text === original.value);
+        }
+      });
+
+      getChecks().forEach(original=>{
+        const copy = clone.querySelector('#' + CSS.escape(original.id));
+        if(copy) copy.checked = original.checked;
+      });
+    }
+
+    function blobToDataURL(blob){
+      return new Promise((resolve,reject)=>{
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('No se pudo convertir la imagen.'));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function forceLocalImageInsideClone(clone){
+      const img = clone.querySelector('img.bg');
+      if(!img) return;
+
+      // En PDF algunos navegadores no pintan bien imágenes relativas/locales.
+      // Para exportar, convertimos maquinas.jpeg a DataURL SOLO dentro del clon.
+      try{
+        const response = await fetch('maquinas.jpeg', { cache:'no-store' });
+        if(!response.ok) throw new Error('No se pudo leer maquinas.jpeg');
+        const blob = await response.blob();
+        img.src = await blobToDataURL(blob);
+      }catch(e){
+        console.warn('No se pudo convertir maquinas.jpeg a DataURL para PDF. Prueba usando servidor local:', e);
+        // Si fetch falla por abrir con file://, dejamos la ruta normal.
+        // La impresión del navegador seguirá funcionando, pero descarga PDF directa puede salir blanca.
+      }
+    }
+
+    async function buildPdfClone(){
+      const source = $('diagramArea');
+      const previous = $('pdfExportStage');
+      if(previous) previous.remove();
+
+      const stage = document.createElement('div');
+      stage.id = 'pdfExportStage';
+      stage.style.position = 'fixed';
+      stage.style.left = '0';
+      stage.style.top = '0';
+      stage.style.width = '1535px';
+      stage.style.height = '1024px';
+      stage.style.overflow = 'hidden';
+      stage.style.background = '#fff';
+      stage.style.zIndex = '2147483647';
+      stage.style.opacity = '1';
+      stage.style.pointerEvents = 'none';
+
+      const clone = source.cloneNode(true);
+      clone.id = 'pdfExportArea';
+      clone.classList.add('pdf-export');
+      clone.style.position = 'relative';
+      clone.style.left = '0';
+      clone.style.top = '0';
+      clone.style.opacity = '1';
+      clone.style.pointerEvents = 'none';
+      clone.style.zIndex = '1';
+      clone.style.transform = 'none';
+
+      syncCloneValues(clone);
+      await forceLocalImageInsideClone(clone);
+
+      stage.appendChild(clone);
+      document.body.appendChild(stage);
+      await waitForImages(stage);
+      await wait(250);
+      return stage;
+    }
+
+    function getPdfOptions(){
+      return {
+        margin:[0.15,0.15,0.15,0.15],
+        filename:buildFilename(),
+        image:{type:'jpeg',quality:0.98},
+        html2canvas:{
+          scale:2,
+          useCORS:true,
+          allowTaint:true,
+          backgroundColor:'#ffffff',
+          scrollX:0,
+          scrollY:0,
+          windowWidth:1535,
+          windowHeight:1024
+        },
+        jsPDF:{
+          unit:'in',
+          format:'letter',
+          orientation:'landscape',
+          compress:true
+        },
+        pagebreak:{mode:['css','legacy'], avoid:['img','.field']}
+      };
+    }
+
+    async function generarPDFBlob(){
+      await ensureHtml2PdfLoaded();
+      const clone = await buildPdfClone();
+      try{
+        return await html2pdf().set(getPdfOptions()).from(clone).outputPdf('blob');
+      }finally{
+        clone.remove();
+      }
+    }
+
+    async function descargarPDF(){
+      try{
+        guardarLocal(false);
+        const blob = await generarPDFBlob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = buildFilename();
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),1500);
+      }catch(e){
+        console.error(e);
+        alert('No se pudo descargar PDF directo. Se abrirá Imprimir / Guardar PDF como respaldo.');
+        imprimir();
+      }
+    }
+
+    async function imprimir(){
+      guardarLocal(false);
+      await waitForImages(document);
+      setTimeout(()=>window.print(),80);
+    }
+
+    async function compartir(){
+      try{
+        guardarLocal(false);
+        const blob = await generarPDFBlob();
+        const file = new File([blob], buildFilename(), {type:'application/pdf'});
+
+        if(navigator.canShare && navigator.canShare({files:[file]})){
+          await navigator.share({
+            title:'Diagrama de servicio ARCOSA',
+            text:'Adjunto diagrama de servicio.',
+            files:[file]
+          });
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = buildFilename();
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),1500);
+        alert('Tu navegador no permite compartir archivos directamente. Se descargó el PDF para que lo compartas manualmente.');
+      }catch(e){
+        console.error(e);
+        alert('No se pudo compartir. Intenta descargar el PDF.');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', async()=>{
+      // Precarga fecha/hora si está vacío
+      const fh = document.getElementById('fechaHora');
+      if(fh && !fh.value){
+        const now = new Date();
+        fh.value = now.toLocaleString('es-MX', { dateStyle:'short', timeStyle:'short' });
+      }
+      try{ cargarLocal(); }catch(e){}
+      await waitForImages(document);
+    });
+  </script>
+</body>
+</html>

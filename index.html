@@ -25,6 +25,12 @@
     .btn.ok{background:var(--ok);color:#001c0d}
     .btn.warn{background:var(--warn);color:#221a00}
     .btn.danger{background:var(--danger)}
+
+    .diagram-link-card{border:1px solid #2d4d7d;background:linear-gradient(135deg,#101c31,#0b1424);}
+    .diagram-link-card .diagram-title{font-size:15px;font-weight:800;color:#e9eefc;margin:0 0 4px;}
+    .diagram-link-card .diagram-desc{font-size:12px;color:var(--muted);margin:0;line-height:1.45;}
+    .diagram-actions{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;}
+    @media(max-width:680px){.diagram-actions{justify-content:flex-start}.diagram-actions .btn{width:100%;text-align:center}}
     .sec-title{font-weight:700;margin:2px 0 8px;font-size:13px;color:#c7d4ff;letter-spacing:.2px}
     small.note{color:var(--muted)}
     .sig-pad{border:1px dashed #2b375c;border-radius:12px;background:#0b1424;height:160px;touch-action:none}
@@ -238,6 +244,20 @@
         <div>
           <label>Prioridad</label>
           <select id="prioridad"><option>Normal</option><option>Alta</option><option>Crítica</option></select>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Diagrama de máquina -->
+    <div class="card diagram-link-card">
+      <div class="grid grid-2" style="align-items:center">
+        <div>
+          <div class="diagram-title">Diagrama de máquina</div>
+          <p class="diagram-desc">Abre la hoja visual del equipo para llenar los campos sobre la imagen.</p>
+        </div>
+        <div class="diagram-actions">
+          <a class="btn primary" href="diagrama.html" target="_blank" rel="noopener">Abrir diagrama</a>
         </div>
       </div>
     </div>
@@ -792,7 +812,7 @@
     </div>
   </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-YcsIPGdhPK4P/uRW46XbVFQGvG1Yb3IzPLTklGv3oV/VtFNV9frvXi0QpRd1oEv2CeI9+98gTghMEzpnFhP7VA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- html2pdf se carga automáticamente desde varias fuentes cuando se necesita -->
 
 <script>
   // ====== Embebidos (opcional) ======
@@ -1267,6 +1287,62 @@ if($('pAban2PsiMax')) $('pAban2PsiMax').textContent = d.aban2PsiMax||'-';
   // ====== Exportación compatible: PDF directo, impresión y compartir PDF ======
   function wait(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
 
+  // Carga robusta de html2pdf:
+  // 1) Primero intenta archivo local: libs/html2pdf.bundle.min.js
+  // 2) Si no existe, intenta CDNs públicos.
+  // Esto evita el error típico de "html2pdf is not defined" en celulares/navegadores.
+  let html2pdfLoadingPromise = null;
+
+  function loadScriptOnce(src){
+    return new Promise((resolve, reject)=>{
+      const existing = [...document.scripts].find(s => s.src === src);
+      if(existing){
+        existing.addEventListener('load', resolve, { once:true });
+        existing.addEventListener('error', reject, { once:true });
+        if(existing.dataset.loaded === 'true') resolve();
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.referrerPolicy = 'no-referrer';
+      script.onload = ()=>{ script.dataset.loaded = 'true'; resolve(); };
+      script.onerror = ()=>reject(new Error('No se pudo cargar: ' + src));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function ensureHtml2PdfLoaded(){
+    if(typeof window.html2pdf === 'function') return true;
+    if(html2pdfLoadingPromise) return html2pdfLoadingPromise;
+
+    const sources = [
+      'libs/html2pdf.bundle.min.js',
+      'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js',
+      'https://unpkg.com/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
+    ];
+
+    html2pdfLoadingPromise = (async()=>{
+      let lastError = null;
+      for(const src of sources){
+        try{
+          await loadScriptOnce(src);
+          await wait(80);
+          if(typeof window.html2pdf === 'function') return true;
+        }catch(e){
+          lastError = e;
+          console.warn(e.message);
+        }
+      }
+      throw lastError || new Error('No se pudo cargar html2pdf.');
+    })();
+
+    return html2pdfLoadingPromise;
+  }
+
   async function waitForImages(root){
     const imgs = [...root.querySelectorAll('img')];
     await Promise.all(imgs.map(img => {
@@ -1291,15 +1367,17 @@ if($('pAban2PsiMax')) $('pAban2PsiMax').textContent = d.aban2PsiMax||'-';
     clone.classList.add('pdf-export');
     clone.style.display = 'block';
     clone.style.position = 'absolute';
-    clone.style.left = '0';
+    // Se manda fuera de pantalla, pero NO con opacity:0 ni display:none,
+    // porque html2canvas lo capturaría transparente o vacío en algunos navegadores.
+    clone.style.left = '-10000px';
     clone.style.top = '0';
     clone.style.width = '816px';
     clone.style.maxWidth = '816px';
     clone.style.background = '#fff';
     clone.style.color = '#000';
-    clone.style.opacity = '0';
+    clone.style.opacity = '1';
     clone.style.pointerEvents = 'none';
-    clone.style.zIndex = '-1';
+    clone.style.zIndex = '1';
 
     document.body.appendChild(clone);
     await waitForImages(clone);
@@ -1335,9 +1413,7 @@ if($('pAban2PsiMax')) $('pAban2PsiMax').textContent = d.aban2PsiMax||'-';
   }
 
   async function generatePDFBlob(){
-    if(typeof html2pdf === 'undefined'){
-      throw new Error('No se cargó la librería html2pdf. Revisa que el navegador tenga internet o usa Imprimir.');
-    }
+    await ensureHtml2PdfLoaded();
 
     const clone = await buildPdfClone();
     try{
@@ -1367,7 +1443,7 @@ if($('pAban2PsiMax')) $('pAban2PsiMax').textContent = d.aban2PsiMax||'-';
       setTimeout(() => URL.revokeObjectURL(url), 1500);
     }catch(e){
       console.error(e);
-      alert('No se pudo descargar el PDF directo. Se abrirá Imprimir / Guardar PDF como respaldo.');
+      alert('No se pudo descargar el PDF directo en este navegador. Se abrirá Imprimir / Guardar PDF como respaldo. Si estás sin internet, agrega libs/html2pdf.bundle.min.js al proyecto.');
       printReport();
     }
   }
